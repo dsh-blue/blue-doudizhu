@@ -4,15 +4,24 @@
   "description": "Blue 斗地主面板：字符牌面 + 复用本地模型的 Bot + 积分排行榜 + 记牌器 + 暂停/收起。",
   "type": "module",
   "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./blue.plugin.json": "./blue.plugin.json",
+    "./package.json": "./package.json"
+  },
   "files": [
     "index.js",
     "cordis.patch.yml",
+    "blue.plugin.json",
     "README.md"
   ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "blue": {
+    "manifest": "./blue.plugin.json"
   },
   "publishConfig": {
     "access": "public"

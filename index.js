@@ -1,4 +1,4 @@
-export const name = 'blue-doudizhu'
+export const name = '@dsh-blue/blue-doudizhu'
 export const inject = ['bluePluginHost', 'timer']
 
 export function apply(ctx) {
@@ -136,16 +136,10 @@ export function apply(ctx) {
         const bot = cards.map(() => '└───┘').join(' ')
         return [top, mid, bot]
       }
-      function charWidth(ch) {
-        const c = ch.codePointAt(0)
-        if (c >= 0x1100 && (c <= 0x115f || c === 0x2329 || c === 0x232a || (c >= 0x2e80 && c <= 0xa4cf && c !== 0x303f) || (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0xfe10 && c <= 0xfe19) || (c >= 0xfe30 && c <= 0xfe6f) || (c >= 0xff00 && c <= 0xff60) || (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x1f300 && c <= 0x1f64f) || (c >= 0x1f900 && c <= 0x1f9ff) || (c >= 0x20000 && c <= 0x2fffd) || (c >= 0x30000 && c <= 0x3fffd))) return 2
-        return 1
-      }
-      function displayWidth(str) { let w = 0; for (const ch of str) w += charWidth(ch); return w }
+      // Width measurement belongs to Blue's renderer adapter. The plugin
+      // emits semantic text and lets the host clamp/wrap it per terminal.
       function centerLine(text) {
-        const w = displayWidth(text)
-        const pad = Math.max(0, Math.floor((BOARD_W - w) / 2))
-        return ' '.repeat(pad) + text
+        return text
       }
       function remainSec(st) { return st && st.thinkDeadline ? Math.max(0, Math.ceil((st.thinkDeadline - Date.now()) / 1000)) : 0 }
       function thinkLines(st) {
@@ -513,7 +507,7 @@ export function apply(ctx) {
         })
       }
       function mount() {
-        const opened = ctx.bluePluginHost.open(ctx, { id: 'com.example.blue-doudizhu', api: '^1.0.0', capabilities: ['commands', 'dock', 'notifications'] })
+        const opened = ctx.bluePluginHost.open(ctx, { id: '@dsh-blue/blue-doudizhu', api: '^1.0.0', capabilities: ['commands', 'dock', 'notifications'] })
         if (!opened.ok) {
           if (opened.code === 'BLUE_CAPABILITY_ABSENT') {
             ctx.timeout(mount, 25)

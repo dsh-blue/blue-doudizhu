@@ -27,16 +27,16 @@ dsh plugin --profile blue add @dsh-blue/blue@rc
 
 ### 方式一：npm
 ```sh
-dsh plugin --profile blue add @dsh-blue/blue-doudizhu
+blue plugin install @dsh-blue/blue-doudizhu
 ```
 
 ### 方式二：GitHub 源
 ```sh
-dsh plugin --profile blue add github:dsh-blue/blue-doudizhu
+blue plugin install github:dsh-blue/blue-doudizhu@<commit>
 ```
 也可以直接用 git URL：
 ```sh
-dsh plugin --profile blue add git+https://github.com/dsh-blue/blue-doudizhu.git
+blue plugin install git+https://github.com/dsh-blue/blue-doudizhu.git@<commit>
 ```
 
 安装后重启 Blue（`dsh --profile blue`），即可使用 `/poker` 命令。
