@@ -11,6 +11,19 @@ Blue 斗地主：在 Blue 的 dock 面板用字符绘制牌局，Bot 复用本�
 - `/poker bot` 切模型Bot / `/poker heuristic` 切规则AI
 
 ## 安装
+
+### 方式一：npm（发布后）
 ```sh
 dsh plugin --profile blue add @dsh-blue/blue-doudizhu
 ```
+
+### 方式二：GitHub 源
+```sh
+dsh plugin --profile blue add github:dsh-blue/blue-doudizhu
+```
+也可以直接用 git URL：
+```sh
+dsh plugin --profile blue add git+https://github.com/dsh-blue/blue-doudizhu.git
+```
+
+安装后重启 Blue（`dsh --profile blue`），即可使用 `/poker` 命令。
