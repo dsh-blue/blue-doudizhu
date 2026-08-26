@@ -1,5 +1,5 @@
 export const name = 'blue-doudizhu'
-export const inject = ['bluePluginHost']
+export const inject = ['bluePluginHost', 'timer']
 
 export function apply(ctx) {
       // ---------- constants ----------
@@ -358,7 +358,9 @@ export function apply(ctx) {
         let ac
         try { ac = new AbortController() } catch (e) { ac = null }
         const t = ctx.get('timer')
-        if (ac && t && t.timeout) t.timeout(THINK_TIMEOUT_MS).then(() => ac.abort())
+        if (ac && t && t.timeout) {
+          t.timeout(THINK_TIMEOUT_MS).then(() => ac.abort()).catch(() => {})
+        }
         state.thinkAbort = ac
         let out = ''
         try {
@@ -498,17 +500,8 @@ export function apply(ctx) {
       }
 
       // ---------- mount ----------
-      const opened = ctx.bluePluginHost.open(ctx, { id: 'com.example.blue-doudizhu', api: '^1.0.0', capabilities: ['commands', 'dock', 'notifications'] })
-      if (!opened.ok) throw new Error(opened.code + ': ' + opened.message)
-      const api = opened.value
-      notifications = api.notifications
-      const cmdReg = api.commands.register({
-        id: 'poker',
-        label: '斗地主牌局',
-        execute,
-      })
-      if (!cmdReg.ok) throw new Error('command register failed: ' + cmdReg.message)
       let dockSlot = null
+      let api = null
       function registerDock() {
         return api.dock.register({
           id: 'doudizhu-board',
@@ -519,8 +512,23 @@ export function apply(ctx) {
           view: () => paused ? null : (state ? renderBoard(state) : (finalBoard || null)),
         })
       }
-      const dockReg = registerDock()
-      if (!dockReg.ok) throw new Error('dock register failed: ' + dockReg.message)
-      dockSlot = dockReg.value
+      function mount() {
+        const opened = ctx.bluePluginHost.open(ctx, { id: 'com.example.blue-doudizhu', api: '^1.0.0', capabilities: ['commands', 'dock', 'notifications'] })
+        if (!opened.ok) {
+          if (opened.code === 'BLUE_CAPABILITY_ABSENT') {
+            ctx.timeout(mount, 25)
+            return
+          }
+          throw new Error(opened.code + ': ' + opened.message)
+        }
+        api = opened.value
+        notifications = api.notifications
+        const cmdReg = api.commands.register({ id: 'poker', label: '斗地主牌局', execute })
+        if (!cmdReg.ok) throw new Error('command register failed: ' + cmdReg.message)
+        const dockReg = registerDock()
+        if (!dockReg.ok) throw new Error('dock register failed: ' + dockReg.message)
+        dockSlot = dockReg.value
+      }
+      mount()
     
 }
