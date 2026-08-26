@@ -2,6 +2,8 @@
 
 Blue 斗地主：在 Blue 的 dock 面板用字符绘制牌局，Bot 复用本地配置的模型，支持积分与排行榜、记牌器、暂停/收起面板。
 
+本项目基于 [Blue](https://github.com/dsh-blue/blue) 构建：Blue 是 DeepSeek Harness 的终端 UI，插件以 Cordis 插件包 + Cordis 补丁的形式挂载。更多资料见 [Blue 文档](https://dsh-blue.dev/)。
+
 ## 命令
 - `/poker new` 开局（可带叫分 `/poker new 2`）
 - `/poker <编码>` 出牌（`0`=10、`jqka2`=JQKA2、`sx`=王炸、`p`=不出）
@@ -19,11 +21,11 @@ npm i -g @deepseek-ai/dsh
 dsh plugin --profile blue add @dsh-blue/blue@rc
 ```
 
-> 🔔 必须先有 `blue` profile 且已安装 `@dsh-blue/blue`，再执行下面的步骤；否则会提示 `bluePluginHost` 能力缺失 / `@dsh-blue/blue` 解析失败。
+> 🔔 必须先有 `blue` profile 且已安装 `@dsh-blue/blue`，再执行下面的步骤；否则会提示 `bluePluginHost` 能力缺失 / `@dsh-blue/blue` 解析失败。Blue 的安装与首次配置参见 [Blue 仓库](https://github.com/dsh-blue/blue) 与 [Blue 文档](https://dsh-blue.dev/en/guide/)。
 
 ## 安装
 
-### 方式一：npm（发布后）
+### 方式一：npm
 ```sh
 dsh plugin --profile blue add @dsh-blue/blue-doudizhu
 ```
@@ -38,3 +40,7 @@ dsh plugin --profile blue add git+https://github.com/dsh-blue/blue-doudizhu.git
 ```
 
 安装后重启 Blue（`dsh --profile blue`），即可使用 `/poker` 命令。
+
+## 相关链接
+- Blue 仓库：https://github.com/dsh-blue/blue
+- Blue 文档：https://dsh-blue.dev/
