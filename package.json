@@ -1,0 +1,33 @@
+{
+  "name": "@dsh-blue/blue-doudizhu",
+  "version": "0.1.0",
+  "description": "Blue 斗地主面板：字符牌面 + 复用本地模型的 Bot + 积分排行榜 + 记牌器 + 暂停/收起。",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@dsh-blue/blue": "*"
+  },
+  "license": "MIT",
+  "keywords": [
+    "blue",
+    "cordis",
+    "dsh",
+    "poker",
+    "doudizhu",
+    "tui"
+  ]
+}
