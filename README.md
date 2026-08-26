@@ -10,6 +10,17 @@ Blue 斗地主：在 Blue 的 dock 面板用字符绘制牌局，Bot 复用本�
 - `/poker pause` 暂停并收起面板；`/poker resume` 恢复并展开
 - `/poker bot` 切模型Bot / `/poker heuristic` 切规则AI
 
+## 前置条件：先安装 Blue
+
+本插件是一个 **Blue 功能**（`cordis.patch.yml` + `bluePluginHost` 插件包），依赖 Blue 终端 UI 与 `bluePluginHost` 能力。**安装本插件前，你必须先装好 Blue**：
+
+```sh
+npm i -g @deepseek-ai/dsh
+dsh plugin --profile blue add @dsh-blue/blue@rc
+```
+
+> 🔔 必须先有 `blue` profile 且已安装 `@dsh-blue/blue`，再执行下面的步骤；否则会提示 `bluePluginHost` 能力缺失 / `@dsh-blue/blue` 解析失败。
+
 ## 安装
 
 ### 方式一：npm（发布后）
