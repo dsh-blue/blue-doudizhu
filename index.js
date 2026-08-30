@@ -12,8 +12,6 @@ export function apply(ctx) {
   const SUITS = ['♠', '♥', '♦', '♣']
   const RANK_CHAR = ['3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K', 'A', '2', 's', 'x']
   const RANK_VAL = { '3': 0, '4': 1, '5': 2, '6': 3, '7': 4, '8': 5, '9': 6, '0': 7, 'j': 8, 'q': 9, 'k': 10, 'a': 11, '2': 12, 's': 13, 'x': 14 }
-  const BOARD_W = 64
-  const HAND_CHUNK = 10
   const SYSTEM_PROMPT = '你是斗地主(3人扑克)的AI玩家。当前轮到你出牌。只输出你选择的牌，编码如下：单张用点数字母(3,4,5,6,7,8,9,0=10,j,q,k,a,2,s=小王,x=大王)；对对子写出两个相同点数(如00)；顺子34567；三带一3334；三带二33344；炸弹3333；王炸sx。若用上面编码无法打不过上家，则输出 p。只输出编码，不要任何解释或多余文字。'
   const THINK_TIMEOUT_MS = 30000
 
@@ -159,13 +157,14 @@ export function apply(ctx) {
     if (st.currentIdx === 0) return { text: '→ 轮到你了！  出牌：/poker <编码>   不出：/poker p', tone: 'accent' }
     return { text: `→ ${st.players[st.currentIdx].name} 出牌中…`, tone: 'default' }
   }
-  function boardLines(st) {
+  function boardLines(st, chunk) {
     // Compact layout: the overlay viewport is a fraction of the terminal, so
-    // every line counts (merged header, single separator, no blank rows).
+    // every line counts (merged header, no in-block separators — the frame's
+    // full-width dividers do that job). `chunk` sets how many cards share one
+    // art row so the hand fills the available width.
     const lines = []
     lines.push(`第${st.round}局 地主:${st.players[st.landlord].name}(底牌 ${st.bottom.map(cardLabel).join(' ')})  局分 ${st.players.map(p => p.name[0] + match.scores[p.idx]).join(' ')}`)
     if (memoOn) lines.push(memoLine(st))
-    lines.push('─'.repeat(BOARD_W))
     for (const p of st.players) {
       if (p.idx === 0) continue
       const turnMark = st.currentIdx === p.idx && st.stage === 'play' ? '→ ' : '  '
@@ -181,8 +180,8 @@ export function apply(ctx) {
     const me = st.players[0]
     lines.push(`你的手牌 [${me.role === 'landlord' ? '地主' : '农民'}] 剩${me.hand.length}张：`)
     const hand = me.hand.slice().sort((a, b) => a.v - b.v)
-    for (let i = 0; i < hand.length; i += HAND_CHUNK) {
-      for (const row of cardRow(hand.slice(i, i + HAND_CHUNK))) lines.push(row)
+    for (let i = 0; i < hand.length; i += chunk) {
+      for (const row of cardRow(hand.slice(i, i + chunk))) lines.push(row)
     }
     return lines
   }
@@ -192,22 +191,39 @@ export function apply(ctx) {
   // keyboard focus, so the player types /poker moves while looking at the
   // cards — no need to close anything. Hiding (/poker hide) never interrupts
   // the game; /poker stop terminates it.
+  //
+  // The renderer never centers or stretches plugin content in the main
+  // screen, so width is used through the two primitives that do span it:
+  // divider nodes (always full overlay width) and responsive `when` children
+  // (pick the hand layout that fills the current overlay viewport).
   const HINT_LINE = '直接输入 /poker <编码> 出牌 · /poker p 不出 · /poker hide 收起牌面 · /poker stop 停止'
+  const HAND_LAYOUTS = [
+    { chunk: 13, when: { minWidth: 84 } },
+    { chunk: 10, when: { minWidth: 64, maxWidth: 83 } },
+    { chunk: 7, when: { maxWidth: 63 } },
+  ]
   function boardNode() {
     const st = state
     if (!st) return finalNode()
     const status = statusText(st)
-    const sections = [
-      { title: '', body: { kind: 'text', content: status.text, tone: status.tone } },
+    const children = [
+      { node: { kind: 'text', content: status.text, tone: status.tone } },
     ]
-    if (st.thinking) for (const l of thinkLines(st)) sections.push({ title: '', body: { kind: 'text', content: l, tone: 'muted' } })
-    sections.push({ title: '', body: { kind: 'code', code: boardLines(st).join('\n'), language: '' } })
-    sections.push({ title: '', body: { kind: 'text', content: HINT_LINE, tone: 'muted' } })
-    return { kind: 'sections', sections }
+    if (st.thinking) for (const l of thinkLines(st)) children.push({ node: { kind: 'text', content: l, tone: 'muted' } })
+    children.push({ node: { kind: 'divider' } })
+    for (const layout of HAND_LAYOUTS) {
+      children.push({ node: { kind: 'code', code: boardLines(st, layout.chunk).join('\n'), language: '' }, when: layout.when })
+    }
+    children.push({ node: { kind: 'divider' } })
+    children.push({ node: { kind: 'text', content: HINT_LINE, tone: 'muted' } })
+    return { kind: 'stack', direction: 'column', gap: 0, children }
+  }
+  function framed(node) {
+    return { kind: 'stack', direction: 'column', gap: 0, children: [{ node: { kind: 'divider' } }, { node }, { node: { kind: 'divider' } }] }
   }
   function finalNode() {
-    if (finalBoard) return finalBoard
-    return { kind: 'text', content: '暂无牌局。/poker new 开始一局斗地主！', tone: 'muted' }
+    if (finalBoard) return framed(finalBoard)
+    return framed({ kind: 'text', content: '暂无牌局。/poker new 开始一局斗地主！', tone: 'muted' })
   }
 
   // ---------- game & match state ----------
@@ -483,7 +499,7 @@ export function apply(ctx) {
   // ---------- leaderboard ----------
   function leaderboardView() {
     const order = [0, 1, 2].sort((a, b) => match.scores[b] - match.scores[a])
-    const lines = ['───────── 排行榜 ─────────']
+    const lines = ['【排行榜】']
     let rank = 1
     for (const i of order) { lines.push(`${rank}. ${NAMES[i]}   ${match.scores[i]} 分`); rank++ }
     lines.push(`（共 ${match.games} 局）`)
