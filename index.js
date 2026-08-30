@@ -143,13 +143,7 @@ export function apply(ctx) {
   function remainSec(st) { return st && st.thinkDeadline ? Math.max(0, Math.ceil((st.thinkDeadline - Date.now()) / 1000)) : 0 }
   function thinkLines(st) {
     const raw = (st.thinkRaw || '').replace(/\s+/g, ' ').trim()
-    if (!raw) return ['…']
-    const a = raw.slice(-128)
-    if (a.length <= 64) return ['  ' + a]
-    return ['  ' + a.slice(0, 64), '  ' + a.slice(64, 128)]
-  }
-  function scoreLine(st) {
-    return `局分：${st.players.map(p => p.name + ' ' + match.scores[p.idx]).join('  ')}`
+    return raw ? ['  ' + raw.slice(-64)] : ['…']
   }
   function memoLine(st) {
     const parts = []
@@ -166,9 +160,10 @@ export function apply(ctx) {
     return { text: `→ ${st.players[st.currentIdx].name} 出牌中…`, tone: 'default' }
   }
   function boardLines(st) {
+    // Compact layout: the overlay viewport is a fraction of the terminal, so
+    // every line counts (merged header, single separator, no blank rows).
     const lines = []
-    lines.push(`【斗地主】第${st.round}局   地主：${st.players[st.landlord].name} (底牌 ${st.bottom.map(cardLabel).join(' ')})`)
-    lines.push(scoreLine(st))
+    lines.push(`第${st.round}局 地主:${st.players[st.landlord].name}(底牌 ${st.bottom.map(cardLabel).join(' ')})  局分 ${st.players.map(p => p.name[0] + match.scores[p.idx]).join(' ')}`)
     if (memoOn) lines.push(memoLine(st))
     lines.push('─'.repeat(BOARD_W))
     for (const p of st.players) {
@@ -177,7 +172,6 @@ export function apply(ctx) {
       const last = p.playedDisplay || (p.played ? playedNotation(p) : '—')
       lines.push(`${turnMark}${p.name} [${p.role === 'landlord' ? '地主' : '农民'}] 剩${p.hand.length}张   本回合: ${last}`)
     }
-    lines.push('─'.repeat(BOARD_W))
     if (st.table) {
       const owner = st.players[st.table.ownerIdx]
       lines.push(`桌面(上家 ${owner.name} 出)：${playedNotation(owner)}`)
@@ -185,7 +179,6 @@ export function apply(ctx) {
       lines.push('本轮无牌可压（新的领出回合）')
     }
     const me = st.players[0]
-    lines.push('')
     lines.push(`你的手牌 [${me.role === 'landlord' ? '地主' : '农民'}] 剩${me.hand.length}张：`)
     const hand = me.hand.slice().sort((a, b) => a.v - b.v)
     for (let i = 0; i < hand.length; i += HAND_CHUNK) {
@@ -197,7 +190,7 @@ export function apply(ctx) {
 
   // Overlay content. Esc only hides the surface; the game itself keeps
   // running, /poker resume reopens, /poker stop terminates.
-  const HINT_LINE = 'Esc 收起牌面（牌局继续） · /poker resume 重新打开 · /poker stop 停止牌局'
+  const HINT_LINE = 'Esc 暂时收起牌面（牌局继续）· 出牌：先 Esc，再输入 /poker <编码> · /poker resume 重开 · /poker stop 停止'
   function boardNode() {
     const st = state
     if (!st) return finalNode()
