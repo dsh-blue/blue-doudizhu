@@ -132,11 +132,35 @@ export function apply(ctx) {
   }
 
   // ---------- rendering (Blue UI wire nodes) ----------
-  function cardRow(cards) {
-    const top = cards.map(() => '┌───┐').join(' ')
-    const mid = cards.map(c => '│' + (cardLabel(c) + '  ').slice(0, 3) + '│').join(' ')
-    const bot = cards.map(() => '└───┘').join(' ')
-    return [top, mid, bot]
+  function cardRow(cards, gap, pad) {
+    const g = ' '.repeat(gap)
+    const top = cards.map(() => '┌───┐').join(g)
+    const mid = cards.map(c => '│' + (cardLabel(c) + '  ').slice(0, 3) + '│').join(g)
+    const bot = cards.map(() => '└───┘').join(g)
+    return [' '.repeat(pad) + top, ' '.repeat(pad) + mid, ' '.repeat(pad) + bot]
+  }
+  // Justified hand layout: cards spread evenly across `width` (two-end
+  // aligned, centered), rows balanced. Pure-box glyphs only, so cell math
+  // is exact — unlike CJK text lines, these can be padded safely.
+  function handArt(hand, width) {
+    const CARD_W = 5 // ┌───┐
+    const n = hand.length
+    if (n === 0) return []
+    const maxPerRow = Math.max(1, Math.min(n, Math.floor((width + 1) / (CARD_W + 1))))
+    const rowCount = Math.ceil(n / maxPerRow)
+    const perRow = Math.ceil(n / rowCount)
+    const lines = []
+    for (let i = 0; i < n; i += perRow) {
+      const row = hand.slice(i, Math.min(i + perRow, n))
+      const c = row.length
+      // Cap the gap so a short end-game hand stays a readable group instead
+      // of scattering single cards across the whole width.
+      const gap = c > 1 ? Math.min(8, Math.max(1, Math.floor((width - CARD_W * c) / (c - 1)))) : 0
+      const rowWidth = CARD_W * c + gap * (c - 1)
+      const pad = Math.max(0, Math.floor((width - rowWidth) / 2))
+      lines.push(...cardRow(row, gap, pad))
+    }
+    return lines
   }
   function remainSec(st) { return st && st.thinkDeadline ? Math.max(0, Math.ceil((st.thinkDeadline - Date.now()) / 1000)) : 0 }
   function thinkLines(st) {
@@ -157,11 +181,25 @@ export function apply(ctx) {
     if (st.currentIdx === 0) return { text: '→ 轮到你了！  出牌：/poker <编码>   不出：/poker p', tone: 'accent' }
     return { text: `→ ${st.players[st.currentIdx].name} 出牌中…`, tone: 'default' }
   }
-  function boardLines(st, chunk) {
-    // Compact layout: the overlay viewport is a fraction of the terminal, so
-    // every line counts (merged header, no in-block separators — the frame's
-    // full-width dividers do that job). `chunk` sets how many cards share one
-    // art row so the hand fills the available width.
+  function playedNotation(p) { return p.played ? p.played.cards.map(cardLabel).join('') : (p.playedDisplay || '—') }
+
+  // Overlay content. The board is NON-capturing: the main editor keeps
+  // keyboard focus, so the player types /poker moves while looking at the
+  // cards — no need to close anything. Hiding (/poker hide) never interrupts
+  // the game; /poker stop terminates it.
+  //
+  // The renderer never centers or stretches plugin content in the main
+  // screen, so width is used through the primitives that do span it:
+  // divider nodes (always full overlay width) and responsive `when`
+  // children. Each width band knows its column budget, so the hand art is
+  // justified and centered against that exact budget.
+  const HINT_LINE = '直接输入 /poker <编码> 出牌 · /poker p 不出 · /poker hide 收起牌面 · /poker stop 停止'
+  // overlay viewport columns -> inner text columns (surface padding + chrome)
+  const BAND_STEP = 4
+  const MIN_BAND_COLUMNS = 56
+  const MAX_BAND_COLUMNS = 100
+  const CHROME_COLUMNS = 4
+  function boardLines(st, width) {
     const lines = []
     lines.push(`第${st.round}局 地主:${st.players[st.landlord].name}(底牌 ${st.bottom.map(cardLabel).join(' ')})  局分 ${st.players.map(p => p.name[0] + match.scores[p.idx]).join(' ')}`)
     if (memoOn) lines.push(memoLine(st))
@@ -180,28 +218,9 @@ export function apply(ctx) {
     const me = st.players[0]
     lines.push(`你的手牌 [${me.role === 'landlord' ? '地主' : '农民'}] 剩${me.hand.length}张：`)
     const hand = me.hand.slice().sort((a, b) => a.v - b.v)
-    for (let i = 0; i < hand.length; i += chunk) {
-      for (const row of cardRow(hand.slice(i, i + chunk))) lines.push(row)
-    }
+    lines.push(...handArt(hand, width))
     return lines
   }
-  function playedNotation(p) { return p.played ? p.played.cards.map(cardLabel).join('') : (p.playedDisplay || '—') }
-
-  // Overlay content. The board is NON-capturing: the main editor keeps
-  // keyboard focus, so the player types /poker moves while looking at the
-  // cards — no need to close anything. Hiding (/poker hide) never interrupts
-  // the game; /poker stop terminates it.
-  //
-  // The renderer never centers or stretches plugin content in the main
-  // screen, so width is used through the two primitives that do span it:
-  // divider nodes (always full overlay width) and responsive `when` children
-  // (pick the hand layout that fills the current overlay viewport).
-  const HINT_LINE = '直接输入 /poker <编码> 出牌 · /poker p 不出 · /poker hide 收起牌面 · /poker stop 停止'
-  const HAND_LAYOUTS = [
-    { chunk: 13, when: { minWidth: 84 } },
-    { chunk: 10, when: { minWidth: 64, maxWidth: 83 } },
-    { chunk: 7, when: { maxWidth: 63 } },
-  ]
   function boardNode() {
     const st = state
     if (!st) return finalNode()
@@ -211,8 +230,15 @@ export function apply(ctx) {
     ]
     if (st.thinking) for (const l of thinkLines(st)) children.push({ node: { kind: 'text', content: l, tone: 'muted' } })
     children.push({ node: { kind: 'divider' } })
-    for (const layout of HAND_LAYOUTS) {
-      children.push({ node: { kind: 'code', code: boardLines(st, layout.chunk).join('\n'), language: '' }, when: layout.when })
+    // One hand layout per width band; the live band justifies the cards
+    // against its own column budget (band minimum, so wider viewports only
+    // leave the padding slack, never a truncation).
+    for (let lo = MIN_BAND_COLUMNS; lo <= MAX_BAND_COLUMNS; lo += BAND_STEP) {
+      const width = lo - CHROME_COLUMNS
+      children.push({
+        node: { kind: 'code', code: boardLines(st, width).join('\n'), language: '' },
+        when: { minWidth: lo, maxWidth: lo + BAND_STEP - 1 },
+      })
     }
     children.push({ node: { kind: 'divider' } })
     children.push({ node: { kind: 'text', content: HINT_LINE, tone: 'muted' } })
