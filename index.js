@@ -139,26 +139,25 @@ export function apply(ctx) {
     const bot = cards.map(() => '└───┘').join(g)
     return [' '.repeat(pad) + top, ' '.repeat(pad) + mid, ' '.repeat(pad) + bot]
   }
-  // Justified hand layout: cards spread evenly across `width` (two-end
-  // aligned, centered), rows balanced. Pure-box glyphs only, so cell math
-  // is exact — unlike CJK text lines, these can be padded safely.
+  // Hand layout: cards grouped tightly (single-space gaps — scattered cards
+  // are hard to read as a hand), rows balanced, and the whole block centered
+  // in the width budget so it occupies the board instead of hugging a side.
+  // Pure-box glyphs only, so cell math is exact — unlike CJK text lines,
+  // these can be padded safely.
   function handArt(hand, width) {
     const CARD_W = 5 // ┌───┐
+    const GAP = 1
     const n = hand.length
     if (n === 0) return []
-    const maxPerRow = Math.max(1, Math.min(n, Math.floor((width + 1) / (CARD_W + 1))))
+    const maxPerRow = Math.max(1, Math.min(n, Math.floor((width + GAP) / (CARD_W + GAP))))
     const rowCount = Math.ceil(n / maxPerRow)
     const perRow = Math.ceil(n / rowCount)
     const lines = []
     for (let i = 0; i < n; i += perRow) {
       const row = hand.slice(i, Math.min(i + perRow, n))
-      const c = row.length
-      // Cap the gap so a short end-game hand stays a readable group instead
-      // of scattering single cards across the whole width.
-      const gap = c > 1 ? Math.min(8, Math.max(1, Math.floor((width - CARD_W * c) / (c - 1)))) : 0
-      const rowWidth = CARD_W * c + gap * (c - 1)
+      const rowWidth = CARD_W * row.length + GAP * (row.length - 1)
       const pad = Math.max(0, Math.floor((width - rowWidth) / 2))
-      lines.push(...cardRow(row, gap, pad))
+      lines.push(...cardRow(row, GAP, pad))
     }
     return lines
   }
@@ -191,8 +190,8 @@ export function apply(ctx) {
   // The renderer never centers or stretches plugin content in the main
   // screen, so width is used through the primitives that do span it:
   // divider nodes (always full overlay width) and responsive `when`
-  // children. Each width band knows its column budget, so the hand art is
-  // justified and centered against that exact budget.
+  // children. Each width band knows its column budget, so the hand cluster
+  // is centered against that exact budget.
   const HINT_LINE = '直接输入 /poker <编码> 出牌 · /poker p 不出 · /poker hide 收起牌面 · /poker stop 停止'
   // overlay viewport columns -> inner text columns (surface padding + chrome)
   const BAND_STEP = 4
@@ -230,9 +229,9 @@ export function apply(ctx) {
     ]
     if (st.thinking) for (const l of thinkLines(st)) children.push({ node: { kind: 'text', content: l, tone: 'muted' } })
     children.push({ node: { kind: 'divider' } })
-    // One hand layout per width band; the live band justifies the cards
-    // against its own column budget (band minimum, so wider viewports only
-    // leave the padding slack, never a truncation).
+    // One hand layout per width band; the live band centers the tight card
+    // cluster against its own column budget (band minimum, so wider viewports
+    // only leave slack around the cluster, never a truncation).
     for (let lo = MIN_BAND_COLUMNS; lo <= MAX_BAND_COLUMNS; lo += BAND_STEP) {
       const width = lo - CHROME_COLUMNS
       children.push({
