@@ -24,8 +24,10 @@ Blue 斗地主：核心牌面以 **overlay** 常驻显示——牌面不抢键�
 
 ```sh
 npm i -g @deepseek-ai/dsh
-dsh plugin --profile blue add @dsh-blue/blue@rc
+dsh plugin --profile blue add @dsh-blue/blue@0.1.1-rc.2
 ```
+
+> ⚠️ 请 pin 住 `@0.1.1-rc.2`：该版本发布未满 24 小时，镜像源同步可能滞后，`@rc` 在个别源上仍可能解析到旧线 `0.1.0-rc.x`——旧线的插件协议不同（`dock`/`notifications` 时代），本插件无法在其上加载。
 
 > 🔔 必须先有 `blue` profile 且已安装 `@dsh-blue/blue`，再执行下面的步骤；否则会提示 `bluePluginHost` 能力缺失 / `@dsh-blue/blue` 解析失败。Blue 的安装与首次配置参见 [Blue 仓库](https://github.com/dsh-blue/blue) 与 [Blue 文档](https://dsh-blue.dev/en/guide/)。
 
