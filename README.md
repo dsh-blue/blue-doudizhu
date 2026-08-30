@@ -1,6 +1,6 @@
 # @dsh-blue/blue-doudizhu
 
-Blue 斗地主：核心牌面以 **overlay** 呈现——`Esc` 只是暂时收起、不打断牌局，`/poker resume` 随时恢复，`/poker stop` 才真正停止。Bot 复用本地配置的模型，支持积分与排行榜、记牌器。
+Blue 斗地主：核心牌面以 **overlay** 常驻显示——牌面不抢键盘焦点，你可以**看着牌直接输入 `/poker <编码>` 出牌**，牌面随每次出牌实时刷新。`/poker hide` 临时收起（不打断牌局）、`/poker show` 恢复，`/poker stop` 才真正停止。Bot 复用本地配置的模型，支持积分与排行榜、记牌器。
 
 本项目基于 [Blue](https://github.com/dsh-blue/blue) 构建：Blue 是 DeepSeek Harness 的终端 UI，插件以 Cordis 插件包 + Cordis 补丁的形式挂载。更多资料见 [Blue 文档](https://dsh-blue.dev/)。
 
@@ -8,11 +8,10 @@ Blue 斗地主：核心牌面以 **overlay** 呈现——`Esc` 只是暂时收�
 
 ## 命令
 - `/poker new` 开局（可带叫分 `/poker new 2`），自动弹出牌面 overlay
-- `/poker <编码>` 出牌（`0`=10、`jqka2`=JQKA2、`sx`=王炸、`p`=不出）
-- **`Esc`** 收起牌面 overlay——仅隐藏界面，牌局与 Bot 继续进行
-- `/poker resume` 重新打开牌面 overlay（并解除暂停）
+- `/poker <编码>` 出牌（`0`=10、`jqka2`=JQKA2、`sx`=王炸、`p`=不出）——**牌面保持可见，直接输入即可**
+- `/poker hide` 临时收起牌面（牌局继续）；`/poker show` 重新展开
 - `/poker stop` 真正停止当前牌局（不计分、收起牌面）
-- `/poker pause` 暂停 Bot 出牌并收起牌面（`/poker resume` 恢复）
+- `/poker pause` 暂停 Bot 出牌（牌面保持可见）；`/poker resume` 恢复并展开牌面
 - `/poker score` 记分；`/poker end` 结束比赛看排行榜
 - `/poker memo` 开关记牌器
 - `/poker bot` 切模型Bot / `/poker heuristic` 切规则AI

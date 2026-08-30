@@ -188,9 +188,11 @@ export function apply(ctx) {
   }
   function playedNotation(p) { return p.played ? p.played.cards.map(cardLabel).join('') : (p.playedDisplay || '—') }
 
-  // Overlay content. Esc only hides the surface; the game itself keeps
-  // running, /poker resume reopens, /poker stop terminates.
-  const HINT_LINE = 'Esc 暂时收起牌面（牌局继续）· 出牌：先 Esc，再输入 /poker <编码> · /poker resume 重开 · /poker stop 停止'
+  // Overlay content. The board is NON-capturing: the main editor keeps
+  // keyboard focus, so the player types /poker moves while looking at the
+  // cards — no need to close anything. Hiding (/poker hide) never interrupts
+  // the game; /poker stop terminates it.
+  const HINT_LINE = '直接输入 /poker <编码> 出牌 · /poker p 不出 · /poker hide 收起牌面 · /poker stop 停止'
   function boardNode() {
     const st = state
     if (!st) return finalNode()
@@ -438,9 +440,9 @@ export function apply(ctx) {
   }
 
   // ---------- overlay board ----------
-  // Capturing + dismissible: Esc dismisses the surface only — the game and
-  // bots keep running. Reopening needs a fresh user gesture, so only command
-  // dispatches (which carry one) open the board.
+  // Non-capturing: the editor stays focused, the player types /poker <编码>
+  // while the board is visible; the board live-refreshes after every move.
+  // No user gesture is needed to open a non-capturing overlay.
   let api = null
   let boardHandle = null
   function refreshBoard() {
@@ -451,29 +453,21 @@ export function apply(ctx) {
   function closeBoard() {
     if (boardHandle && !boardHandle.closed) boardHandle.close()
   }
-  function openBoard(userGesture) {
+  function openBoard() {
     if (!api || !api.overlays) return { ok: false, code: 'BLUE_CAPABILITY_ABSENT', message: 'overlays capability unavailable' }
     if (boardHandle && !boardHandle.closed) { refreshBoard(); return { ok: true, value: undefined } }
     const opened = api.overlays.open({
       id: 'doudizhu.board',
       title: '斗地主',
-      capturing: true,
+      capturing: false,
       dismissible: true,
       anchor: 'center',
       width: '86%',
-      maxHeight: '90%',
+      maxHeight: '80%',
       render: boardNode,
-      onEvent: boardEvent,
-    }, userGesture === undefined ? undefined : { userGesture })
+    })
     if (!opened.ok) return opened
     boardHandle = opened.value
-    return { ok: true, value: undefined }
-  }
-  function boardEvent(event) {
-    if (event.kind === 'dismiss') {
-      // Esc: temporary close. The game (and bot turns) continues.
-      notify('牌面已收起（Esc），牌局继续。/poker resume 重新打开牌面', 'muted')
-    }
     return { ok: true, value: undefined }
   }
 
@@ -497,8 +491,7 @@ export function apply(ctx) {
   }
 
   // ---------- command handling ----------
-  async function execute(args, options) {
-    const gesture = options && options.userGesture
+  async function execute(args) {
     if (!args || args.length === 0) { notify('/poker new 开始一局；/poker help 查看说明'); return { ok: true, value: undefined } }
     const first = String(args[0]).toLowerCase()
     if (first === 'new' || first === 'start') {
@@ -508,13 +501,13 @@ export function apply(ctx) {
       const err = startGame(bidArg)
       if (err) { notify(err.error); return { ok: false, code: 'BLUE_ACTION_REJECTED', message: err.error } }
       notify(`新局开始！地主：${state.players[state.landlord].name}；底牌 ${state.bottom.map(cardLabel).join(' ')}。Bot 决策模型：${modelLabel() || '启发式AI'}`, 'success')
-      const opened = openBoard(gesture)
-      if (!opened.ok) notify(`牌面打开失败（${opened.code}），牌局继续；稍后可用 /poker resume 重试`, 'warning')
+      const opened = openBoard()
+      if (!opened.ok) notify(`牌面打开失败（${opened.code}），牌局继续；稍后可用 /poker show 重试`, 'warning')
       drive()
       return { ok: true, value: undefined }
     }
     if (first === 'help' || first === 'rules') {
-      notify('/poker new 开局；出牌 /poker <编码>；不出 /poker p。/poker resume 重新打开牌面；/poker stop 停止牌局；/poker pause 暂停 Bot。记分 /poker score；结束比赛看排行 /poker end；记牌器 /poker memo；Bot 模式 /poker bot；编码 0=10 jqka2 sx=王炸', 'muted')
+      notify('/poker new 开局；看着牌面直接输入：出牌 /poker <编码>、不出 /poker p（0=10 jqka2 sx=王炸）。/poker hide 收起牌面 / /poker show 展开；/poker pause 暂停 Bot；/poker stop 停止牌局；/poker score 记分；/poker end 排行榜；/poker memo 记牌器；/poker bot 模型Bot', 'muted')
       return { ok: true, value: undefined }
     }
     if (first === 'status') { notify(state ? turnDesc() : '当前无牌局'); return { ok: true, value: undefined } }
@@ -526,16 +519,25 @@ export function apply(ctx) {
       return { ok: true, value: undefined }
     }
     if (first === 'pause') {
-      paused = true; stopTheThink(); closeBoard()
-      notify('已暂停：Bot 停止出牌，牌面已收起；/poker resume 恢复牌局并展开牌面', 'muted')
+      paused = true; stopTheThink()
+      notify('已暂停：Bot 停止出牌（牌面保持可见）；/poker resume 恢复', 'muted')
       return { ok: true, value: undefined }
     }
-    if (first === 'resume') {
-      if (!state) { notify('当前没有进行中的牌局。/poker new 开始一局'); return { ok: false, code: 'BLUE_ACTION_REJECTED', message: 'no game' } }
-      paused = false
-      const opened = openBoard(gesture)
+    if (first === 'hide' || first === 'close') {
+      closeBoard()
+      notify('牌面已收起（牌局继续）；/poker show 重新打开', 'muted')
+      return { ok: true, value: undefined }
+    }
+    if (first === 'show' || first === 'resume') {
+      if (first === 'resume') paused = false
+      if (!state) {
+        if (finalBoard) { const opened = openBoard(); if (!opened.ok) notify(`牌面打开失败（${opened.code}）`, 'warning'); return { ok: true, value: undefined } }
+        notify('当前没有进行中的牌局。/poker new 开始一局')
+        return { ok: false, code: 'BLUE_ACTION_REJECTED', message: 'no game' }
+      }
+      const opened = openBoard()
       if (!opened.ok) notify(`牌面打开失败（${opened.code}），牌局继续`, 'warning')
-      notify('已恢复，牌面展开', 'success')
+      else notify('牌面已展开', 'success')
       drive()
       return { ok: true, value: undefined }
     }
@@ -546,7 +548,7 @@ export function apply(ctx) {
       match = { scores: [0, 0, 0], games: 0 }
       state = null; paused = false
       notify(`比赛结束！共 ${n} 局，排行榜见面板`, 'success')
-      const opened = openBoard(gesture)
+      const opened = openBoard()
       if (!opened.ok) notify(`排行榜打开失败（${opened.code}）`, 'warning')
       return { ok: true, value: undefined }
     }
