@@ -1,7 +1,7 @@
 {
   "name": "@dsh-blue/blue-doudizhu",
-  "version": "0.1.0",
-  "description": "Blue 斗地主面板：字符牌面 + 复用本地模型的 Bot + 积分排行榜 + 记牌器 + 暂停/收起。",
+  "version": "0.2.0",
+  "description": "Blue 斗地主面板：overlay 牌面（Esc 暂时收起，不打断牌局）+ 复用本地模型的 Bot + 积分排行榜 + 记牌器。",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -28,7 +28,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@dsh-blue/blue": "*"
+    "@dsh-blue/blue": ">=0.1.1-rc.2 <0.2.0"
   },
   "license": "MIT",
   "keywords": [
@@ -37,6 +37,7 @@
     "dsh",
     "poker",
     "doudizhu",
-    "tui"
+    "tui",
+    "overlay"
   ]
 }
