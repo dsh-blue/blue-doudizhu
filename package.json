@@ -1,16 +1,19 @@
 {
   "name": "@dsh-blue/blue-doudizhu",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Blue 斗地主面板：overlay 牌面（Esc 暂时收起，不打断牌局）+ 复用本地模型的 Bot + 积分排行榜 + 记牌器。",
   "type": "module",
-  "main": "index.js",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "main": "src/index.js",
   "exports": {
-    ".": "./index.js",
+    ".": "./src/index.js",
     "./blue.plugin.json": "./blue.plugin.json",
     "./package.json": "./package.json"
   },
   "files": [
-    "index.js",
+    "src",
     "cordis.patch.yml",
     "blue.plugin.json",
     "README.md"
@@ -26,9 +29,28 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dsh-blue/blue-doudizhu.git"
+  },
+  "homepage": "https://github.com/dsh-blue/blue-doudizhu#readme",
+  "bugs": {
+    "url": "https://github.com/dsh-blue/blue-doudizhu/issues"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage"
+  },
+  "dependencies": {
+    "@dsh-blue/blue-api": "0.1.1-rc.2",
+    "@dsh-blue/blue-ui": "0.1.1-rc.2"
+  },
   "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@dsh-blue/blue": ">=0.1.1-rc.2 <0.2.0"
+    "@dsh-blue/blue-core": "0.1.1-rc.2"
   },
   "license": "MIT",
   "keywords": [

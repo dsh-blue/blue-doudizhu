@@ -6,7 +6,7 @@ Blue 斗地主：核心牌面以 **overlay** 常驻显示——牌面不抢键�
 
 本项目基于 [Blue](https://github.com/dsh-blue/blue) 构建：Blue 是 DeepSeek Harness 的终端 UI，插件以 Cordis 插件包 + Cordis 补丁的形式挂载。更多资料见 [Blue 文档](https://dsh-blue.dev/)。
 
-已对齐 Blue `0.1.1-rc` 线（插件协议 `1.0.0-beta.1`，capabilities：`commands` / `overlays` / `notifications.publish`）。
+`0.3.0` 已迁移到 Blue canonical plugin manifest v1：`commands`（仅 `/poker`）和 `overlays` 是必需能力，`notifications.publish` 是可选能力。通知 owner 暂时不可用时牌局仍可运行；本地模型服务不存在或重载时，Bot 自动回退到规则 AI。
 
 ## 命令
 - `/poker new` 开局（可带叫分 `/poker new 2`），自动弹出牌面 overlay
@@ -27,8 +27,6 @@ npm i -g @deepseek-ai/dsh
 dsh plugin --profile blue add @dsh-blue/blue@0.1.1-rc.2
 ```
 
-> ⚠️ 请 pin 住 `@0.1.1-rc.2`：该版本发布未满 24 小时，镜像源同步可能滞后，`@rc` 在个别源上仍可能解析到旧线 `0.1.0-rc.x`——旧线的插件协议不同（`dock`/`notifications` 时代），本插件无法在其上加载。
-
 > 🔔 必须先有 `blue` profile 且已安装 `@dsh-blue/blue`，再执行下面的步骤；否则会提示 `bluePluginHost` 能力缺失 / `@dsh-blue/blue` 解析失败。Blue 的安装与首次配置参见 [Blue 仓库](https://github.com/dsh-blue/blue) 与 [Blue 文档](https://dsh-blue.dev/en/guide/)。
 
 ## 安装
@@ -37,7 +35,7 @@ dsh plugin --profile blue add @dsh-blue/blue@0.1.1-rc.2
 
 ### 方式一：npm（推荐）
 ```sh
-dsh plugin --profile blue add @dsh-blue/blue-doudizhu@0.2.0
+dsh plugin --profile blue add @dsh-blue/blue-doudizhu@0.3.0
 ```
 也可以省略版本号装最新版：`dsh plugin --profile blue add @dsh-blue/blue-doudizhu`
 
@@ -51,6 +49,21 @@ dsh plugin --profile blue add git+https://github.com/dsh-blue/blue-doudizhu.git
 ```
 
 安装后重启 Blue（`dsh --profile blue`），即可使用 `/poker` 命令。
+
+## 运行边界
+
+- 规则、牌局动作和 heuristic Bot 是纯 domain 代码，不依赖 Blue 或终端 renderer。
+- 牌面只消费当前 domain 派生的 readonly projection，并通过 `@dsh-blue/blue-ui` 构造公开 wire nodes。
+- Harness 的 `llm` / `agentDefaultModel` 由独立 Cordis 子 Fiber 适配；provider unload、插件 unload 或新牌局都会 abort 旧 stream 并拒绝 late result。
+- 插件 Fiber 卸载时会停止 driver、关闭 overlay 并清除全部 owner-scoped 状态；没有进程级可变单例。
+
+开发验证：
+
+```sh
+npm install --ignore-scripts
+npm test
+npm run test:coverage
+```
 
 ## 相关链接
 - Blue 仓库：https://github.com/dsh-blue/blue
